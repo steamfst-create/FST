@@ -1,0 +1,749 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Ledger</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0b0f14;
+    --card:#141a21;
+    --card2:#0f151b;
+    --line:#232c36;
+    --text:#e7ecef;
+    --muted:#8b98a5;
+    --green:#22c55e;
+    --green-dim:#173321;
+    --gold:#e8b94a;
+    --gold-dim:#3a2f14;
+    --red:#e5484d;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--bg);
+    color:var(--text);
+    font-family:'Inter',sans-serif;
+    -webkit-tap-highlight-color:transparent;
+    padding-bottom:40px;
+  }
+  .mono{font-family:'Space Mono',monospace;}
+
+  /* ---- Top bar ---- */
+  .topbar{
+    position:sticky;top:0;z-index:20;
+    display:flex;align-items:center;gap:14px;
+    padding:16px 18px;
+    background:var(--bg);
+    border-bottom:1px solid var(--line);
+  }
+  .hamburger{
+    width:36px;height:36px;
+    border-radius:10px;
+    background:var(--card);
+    border:1px solid var(--line);
+    display:flex;flex-direction:column;justify-content:center;align-items:center;gap:4px;
+    cursor:pointer;
+  }
+  .hamburger span{width:16px;height:2px;background:var(--text);border-radius:1px;}
+  .topbar-title{font-size:16px;font-weight:700;letter-spacing:0.3px;}
+
+  /* ---- Sidebar ---- */
+  .overlay{
+    position:fixed;inset:0;
+    background:rgba(0,0,0,0.5);
+    opacity:0;pointer-events:none;
+    transition:opacity 0.2s;
+    z-index:30;
+  }
+  .overlay.show{opacity:1;pointer-events:auto;}
+  .sidebar{
+    position:fixed;top:0;left:0;bottom:0;
+    width:230px;
+    background:var(--card);
+    border-right:1px solid var(--line);
+    transform:translateX(-100%);
+    transition:transform 0.25s ease;
+    z-index:31;
+    padding:20px 0;
+  }
+  .sidebar.open{transform:translateX(0);}
+  .sidebar-title{
+    padding:0 20px 16px;
+    font-size:13px;
+    color:var(--muted);
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    border-bottom:1px solid var(--line);
+    margin-bottom:8px;
+  }
+  .side-link{
+    display:flex;align-items:center;gap:12px;
+    padding:14px 20px;
+    color:var(--text);
+    font-size:15px;
+    font-weight:500;
+    cursor:pointer;
+  }
+  .side-link.active{background:var(--card2);color:var(--green);}
+  .side-link:active{opacity:0.7;}
+
+  .page{display:none;}
+  .page.active{display:block;}
+
+  section{padding:18px 18px 0;}
+  h2{
+    font-size:13px;
+    text-transform:uppercase;
+    letter-spacing:1.5px;
+    color:var(--muted);
+    margin:0 0 12px;
+    font-weight:600;
+  }
+
+  /* ---- Home ledger header ---- */
+  .ledger-head{
+    padding:20px 18px 18px;
+    border-bottom:1px dashed var(--line);
+  }
+  .ledger-label{font-size:11px;letter-spacing:2px;color:var(--muted);text-transform:uppercase;}
+  .ledger-total{
+    font-family:'Space Mono',monospace;
+    font-weight:700;font-size:38px;
+    color:var(--green);
+    margin-top:4px;letter-spacing:-1px;
+  }
+
+  /* ---- All-time category totals ---- */
+  .cat-totals{
+    padding:18px 18px 4px;
+    text-align:center;
+  }
+  .cat-totals-title{
+    font-size:11px;letter-spacing:1.5px;color:var(--muted);
+    text-transform:uppercase;margin-bottom:10px;
+  }
+  .cat-total-row{
+    font-size:15px;
+    padding:7px 0;
+    color:var(--text);
+    border-bottom:1px dashed var(--line);
+  }
+  .cat-total-row:last-child{border-bottom:none;}
+  .cat-total-row b{
+    color:var(--green);
+    font-family:'Space Mono',monospace;
+    margin-left:10px;
+    font-weight:700;
+  }
+
+  /* ---- Home day boxes ---- */
+  .home-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:12px;
+    margin-top:4px;
+  }
+  .day-box{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:14px;
+  }
+  .day-box-date{font-size:12px;color:var(--muted);margin-bottom:8px;font-weight:600;}
+  .day-box-cat{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:12.5px;
+    padding:3px 0;
+    color:var(--text);
+    gap:6px;
+  }
+  .day-box-cat .cat-name{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .day-box-cat .cat-right{display:flex;align-items:center;gap:5px;flex-shrink:0;}
+  .day-box-cat .cat-amt{font-family:'Space Mono',monospace;color:var(--green);}
+  .cat-icon-btn{
+    width:18px;height:18px;
+    border-radius:5px;
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--muted);
+    font-size:9px;
+    line-height:1;
+    padding:0;
+  }
+  .cat-icon-btn.del{color:var(--red);border-color:var(--red);}
+  .day-box-total{
+    display:flex;justify-content:space-between;
+    margin-top:8px;padding-top:8px;
+    border-top:1px dashed var(--line);
+    font-size:13px;font-weight:700;
+  }
+  .day-box-total span:last-child{font-family:'Space Mono',monospace;color:var(--green);}
+  .empty{color:var(--muted);font-size:13px;text-align:center;padding:24px 0;}
+
+  .pagination{
+    display:flex;justify-content:space-between;align-items:center;
+    margin-top:16px;
+  }
+  .page-btn{
+    background:var(--card);
+    border:1px solid var(--line);
+    color:var(--text);
+    padding:10px 18px;
+    border-radius:10px;
+    font-size:13px;
+    font-weight:600;
+  }
+  .page-btn:disabled{opacity:0.35;}
+  .page-info{font-size:12px;color:var(--muted);}
+
+  /* ---- Add expense form ---- */
+  .add-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:14px;
+    padding:16px;
+  }
+  .row{display:flex;gap:10px;}
+  .row + .row{margin-top:10px;}
+  input{
+    background:var(--card2);
+    border:1px solid var(--line);
+    color:var(--text);
+    border-radius:10px;
+    padding:12px 14px;
+    font-size:15px;
+    width:100%;
+    font-family:'Inter',sans-serif;
+  }
+  input.amount{
+    font-family:'Space Mono',monospace;
+    font-size:20px;font-weight:700;
+    color:var(--green);
+  }
+  input:focus{outline:none;border-color:var(--green);}
+  button{border:none;border-radius:10px;font-weight:600;cursor:pointer;font-family:'Inter',sans-serif;}
+  .btn-stage{
+    width:100%;padding:13px;
+    background:var(--card2);
+    border:1px solid var(--green);
+    color:var(--green);
+    font-size:15px;margin-top:12px;
+  }
+  .btn-stage:active{opacity:0.7;}
+  .btn-commit{
+    width:100%;padding:14px;
+    background:var(--green);
+    color:#062012;
+    font-size:16px;margin-top:16px;
+  }
+  .btn-commit:disabled{opacity:0.35;}
+
+  /* ---- Staging grid ---- */
+  .stage-count{font-size:12px;color:var(--muted);margin:14px 0 8px;}
+  .stage-grid{
+    display:grid;
+    grid-template-columns:repeat(5,1fr);
+    gap:8px;
+  }
+  .stage-item{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:8px;
+    padding:6px 4px;
+    text-align:center;
+    position:relative;
+  }
+  .stage-amt{font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--green);}
+  .stage-cat{font-size:9px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .stage-del{
+    position:absolute;top:-6px;right:-6px;
+    width:16px;height:16px;border-radius:50%;
+    background:var(--red);color:#fff;
+    font-size:9px;line-height:16px;
+    border:none;padding:0;
+  }
+  .toast{
+    position:fixed;bottom:24px;left:50%;
+    transform:translateX(-50%);
+    background:var(--green);
+    color:#062012;
+    padding:12px 20px;
+    border-radius:10px;
+    font-size:14px;font-weight:600;
+    z-index:50;
+    opacity:0;pointer-events:none;
+    transition:opacity 0.25s;
+  }
+  .toast.show{opacity:1;}
+
+  /* ---- Alarms ---- */
+  .rem-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;}
+  .time-row{display:flex;gap:8px;align-items:center;}
+  input.time-part{text-align:center;font-family:'Space Mono',monospace;font-size:18px;font-weight:700;color:var(--gold);}
+  .days-row{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;}
+  .day-chip{
+    width:36px;height:36px;border-radius:50%;
+    background:var(--card2);border:1px solid var(--line);color:var(--muted);
+    font-size:12px;font-weight:600;
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+  }
+  .day-chip.on{background:var(--gold-dim);border-color:var(--gold);color:var(--gold);}
+  .btn-rem{width:100%;padding:13px;background:var(--gold);color:#2b2205;font-size:15px;margin-top:12px;}
+  .reminder-item{
+    display:flex;justify-content:space-between;align-items:center;
+    background:var(--card);border:1px solid var(--line);border-radius:10px;
+    padding:12px 14px;margin-bottom:8px;
+  }
+  .rem-left{display:flex;flex-direction:column;gap:3px;}
+  .rem-time{font-family:'Space Mono',monospace;font-weight:700;color:var(--gold);font-size:17px;}
+  .rem-days{font-size:11px;color:var(--muted);}
+  .exp-right{display:flex;align-items:center;gap:10px;}
+  .del-btn{background:transparent;color:var(--muted);border:1px solid var(--line);border-radius:8px;width:28px;height:28px;font-size:14px;line-height:1;}
+  .notif-banner{
+    background:var(--gold-dim);border:1px solid var(--gold);color:var(--gold);
+    border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px;
+    display:flex;justify-content:space-between;align-items:center;gap:10px;
+  }
+  .notif-banner button{background:var(--gold);color:#2b2205;padding:8px 12px;font-size:12px;white-space:nowrap;}
+  .status-dot{width:8px;height:8px;border-radius:50%;background:var(--green);display:inline-block;margin-right:6px;}
+  .sync-note{font-size:11px;color:var(--muted);text-align:center;padding:20px 20px 0;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="hamburger" id="hamburgerBtn"><span></span><span></span><span></span></div>
+  <div class="topbar-title" id="pageTitle">Home</div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<div class="sidebar" id="sidebar">
+  <div class="sidebar-title">Ledger</div>
+  <div class="side-link active" data-page="home">🏠 Home</div>
+  <div class="side-link" data-page="add">➕ Add Expense</div>
+  <div class="side-link" data-page="alarms">⏰ Alarms</div>
+</div>
+
+<!-- HOME PAGE -->
+<div class="page active" id="page-home">
+  <div class="ledger-head">
+    <div class="ledger-label">Total spent · all history</div>
+    <div class="ledger-total mono" id="totalAmount">₹0</div>
+    <div class="ledger-sub" style="display:flex;justify-content:space-between;margin-top:10px;font-size:12px;color:var(--muted);">
+      <span><span class="status-dot" id="statusDot"></span><span id="statusText">Connecting…</span></span>
+      <span id="entryCount">0 entries</span>
+    </div>
+  </div>
+  <div class="cat-totals">
+    <div class="cat-totals-title">Category Totals · All Days</div>
+    <div id="catTotalsList"></div>
+  </div>
+  <section>
+    <div class="home-grid" id="homeGrid"><div class="empty">No expenses yet</div></div>
+    <div class="pagination" id="pagination" style="display:none;">
+      <button class="page-btn" id="prevBtn">◀ Prev</button>
+      <span class="page-info" id="pageInfo"></span>
+      <button class="page-btn" id="nextBtn">Next ▶</button>
+    </div>
+  </section>
+</div>
+
+<!-- ADD EXPENSE PAGE -->
+<div class="page" id="page-add">
+  <section>
+    <h2>New Expense</h2>
+    <div class="add-card">
+      <div class="row"><input type="number" inputmode="decimal" placeholder="Amount" class="amount" id="inpAmount"></div>
+      <div class="row"><input type="date" id="inpDate"></div>
+      <div class="row"><input type="text" placeholder="Category (e.g. Milk, Food, Travel)" id="inpCategory"></div>
+      <div class="row"><input type="text" placeholder="Note (optional)" id="inpNote"></div>
+      <button class="btn-stage" id="btnStage">+ Add to Batch</button>
+    </div>
+
+    <div class="stage-count" id="stageCount">0 staged</div>
+    <div class="stage-grid" id="stageGrid"></div>
+
+    <button class="btn-commit" id="btnCommit" disabled>Add Expenses</button>
+  </section>
+</div>
+
+<!-- ALARMS PAGE -->
+<div class="page" id="page-alarms">
+  <section>
+    <h2>Alarms</h2>
+    <div id="notifBanner" class="notif-banner" style="display:none;">
+      <span>Turn on notifications so alarms can alert you</span>
+      <button id="btnEnableNotif">Enable</button>
+    </div>
+    <div class="rem-card">
+      <div class="row"><input type="text" placeholder="Alarm name (e.g. Tablet, Wake up)" id="inpRemLabel"></div>
+      <div class="row time-row">
+        <input type="number" min="0" max="23" placeholder="HH" class="time-part" id="inpHour" style="width:70px;">
+        <span class="mono" style="font-size:20px;color:var(--muted);">:</span>
+        <input type="number" min="0" max="59" placeholder="MM" class="time-part" id="inpMinute" style="width:70px;">
+      </div>
+      <div class="days-row" id="dayChips"></div>
+      <button class="btn-rem" id="btnAddReminder">Add Alarm</button>
+    </div>
+  </section>
+  <section style="padding-top:14px;">
+    <div id="reminderList"><div class="empty">No alarms set</div></div>
+  </section>
+</div>
+
+<div class="sync-note">Synced live across all connected phones via Firebase</div>
+<div class="toast" id="toast"></div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script>
+// ---------- Firebase setup ----------
+const firebaseConfig = {
+  apiKey: "AIzaSyAaFxJp_bhB7I0gTq528G8C82Z5qQooKto",
+  authDomain: "fsts-90e8f.firebaseapp.com",
+  databaseURL: "https://fsts-90e8f-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "fsts-90e8f",
+  storageBucket: "fsts-90e8f.firebasestorage.app",
+  messagingSenderId: "190084465337",
+  appId: "1:190084465337:web:8f994df9bfab9ed0689168",
+  measurementId: "G-3VPST767K3"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const expensesRef = db.ref('expenses');
+const remindersRef = db.ref('reminders');
+
+const statusDot = document.getElementById('statusDot');
+const statusText = document.getElementById('statusText');
+db.ref('.info/connected').on('value', snap => {
+  if (snap.val() === true) { statusDot.style.background = 'var(--green)'; statusText.textContent = 'Synced'; }
+  else { statusDot.style.background = 'var(--red)'; statusText.textContent = 'Offline'; }
+});
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+function formatRupee(n) { return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 2 }); }
+function todayISO() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+function formatDateDisplay(iso) {
+  const d = new Date(iso + 'T00:00:00');
+  return d.toLocaleDateString('en-IN', { day:'numeric', month:'short', year:'numeric' });
+}
+
+// ---------- Sidebar navigation ----------
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('overlay');
+const hamburgerBtn = document.getElementById('hamburgerBtn');
+const pageTitle = document.getElementById('pageTitle');
+const titles = { home: 'Home', add: 'Add Expense', alarms: 'Alarms' };
+
+function openSidebar() { sidebar.classList.add('open'); overlay.classList.add('show'); }
+function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('show'); }
+hamburgerBtn.addEventListener('click', openSidebar);
+overlay.addEventListener('click', closeSidebar);
+
+document.querySelectorAll('.side-link').forEach(link => {
+  link.addEventListener('click', () => {
+    const page = link.dataset.page;
+    document.querySelectorAll('.side-link').forEach(l => l.classList.remove('active'));
+    link.classList.add('active');
+    document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+    document.getElementById('page-' + page).classList.add('active');
+    pageTitle.textContent = titles[page];
+    closeSidebar();
+  });
+});
+
+// ---------- HOME: expenses grouped by day, paginated, live from Firebase ----------
+const BOXES_PER_PAGE = 10;
+let homePageIndex = 0;
+let allExpenses = [];
+
+expensesRef.on('value', snap => {
+  const data = snap.val() || {};
+  allExpenses = Object.entries(data).map(([id, v]) => ({ id, ...v }));
+  renderHome();
+});
+
+function renderCatTotals() {
+  const catSums = {};
+  allExpenses.forEach(e => {
+    const cat = e.category || 'Other';
+    catSums[cat] = (catSums[cat] || 0) + Number(e.amount || 0);
+  });
+  const listEl = document.getElementById('catTotalsList');
+  const cats = Object.entries(catSums).sort((a, b) => b[1] - a[1]);
+  if (cats.length === 0) { listEl.innerHTML = '<div class="empty">No categories yet</div>'; return; }
+  listEl.innerHTML = cats.map(([cat, amt]) =>
+    `<div class="cat-total-row">${escapeHtml(cat)} <b>${formatRupee(amt)}</b></div>`
+  ).join('');
+}
+
+function renderHome() {
+  const total = allExpenses.reduce((s, e) => s + Number(e.amount || 0), 0);
+  document.getElementById('totalAmount').textContent = formatRupee(total);
+  document.getElementById('entryCount').textContent = allExpenses.length + ' entries';
+  renderCatTotals();
+
+  const groups = {};
+  allExpenses.forEach(e => {
+    const key = e.date || todayISO();
+    if (!groups[key]) groups[key] = [];
+    groups[key].push(e);
+  });
+  const dayKeys = Object.keys(groups).sort((a, b) => b.localeCompare(a));
+
+  const grid = document.getElementById('homeGrid');
+  const pagination = document.getElementById('pagination');
+
+  if (dayKeys.length === 0) {
+    grid.innerHTML = '<div class="empty">No expenses yet</div>';
+    pagination.style.display = 'none';
+    return;
+  }
+
+  const totalPages = Math.ceil(dayKeys.length / BOXES_PER_PAGE);
+  if (homePageIndex >= totalPages) homePageIndex = totalPages - 1;
+  const start = homePageIndex * BOXES_PER_PAGE;
+  const pageKeys = dayKeys.slice(start, start + BOXES_PER_PAGE);
+
+  grid.innerHTML = '';
+  pageKeys.forEach(dayKey => {
+    const items = groups[dayKey];
+    const catTotals = {};
+    items.forEach(e => {
+      const cat = e.category || 'Other';
+      catTotals[cat] = (catTotals[cat] || 0) + Number(e.amount || 0);
+    });
+    const dayTotal = items.reduce((s, e) => s + Number(e.amount || 0), 0);
+
+    const box = document.createElement('div');
+    box.className = 'day-box';
+    let catRows = Object.entries(catTotals).map(([cat, amt]) => `
+      <div class="day-box-cat">
+        <span class="cat-name">${escapeHtml(cat)}</span>
+        <span class="cat-right">
+          <span class="cat-amt">${formatRupee(amt)}</span>
+          <button class="cat-icon-btn cat-edit" data-day="${dayKey}" data-cat="${escapeHtml(cat)}">✎</button>
+          <button class="cat-icon-btn del cat-del" data-day="${dayKey}" data-cat="${escapeHtml(cat)}">✕</button>
+        </span>
+      </div>`
+    ).join('');
+    box.innerHTML = `
+      <div class="day-box-date">${formatDateDisplay(dayKey)}</div>
+      ${catRows}
+      <div class="day-box-total"><span>Total</span><span>${formatRupee(dayTotal)}</span></div>
+    `;
+    grid.appendChild(box);
+  });
+
+  grid.querySelectorAll('.cat-edit').forEach(btn => {
+    btn.addEventListener('click', () => editCategory(btn.dataset.day, btn.dataset.cat));
+  });
+  grid.querySelectorAll('.cat-del').forEach(btn => {
+    btn.addEventListener('click', () => deleteCategory(btn.dataset.day, btn.dataset.cat));
+  });
+
+  if (totalPages > 1) {
+    pagination.style.display = 'flex';
+    document.getElementById('pageInfo').textContent = `Page ${homePageIndex+1} of ${totalPages}`;
+    document.getElementById('prevBtn').disabled = homePageIndex === 0;
+    document.getElementById('nextBtn').disabled = homePageIndex === totalPages - 1;
+  } else {
+    pagination.style.display = 'none';
+  }
+}
+document.getElementById('prevBtn').addEventListener('click', () => { homePageIndex--; renderHome(); });
+document.getElementById('nextBtn').addEventListener('click', () => { homePageIndex++; renderHome(); });
+
+// ---------- Edit / delete a category's entries for a given day (writes to Firebase) ----------
+function editCategory(dayKey, cat) {
+  const matching = allExpenses.filter(e => e.date === dayKey && (e.category || 'Other') === cat);
+  const currentTotal = matching.reduce((s, e) => s + Number(e.amount || 0), 0);
+  const newName = prompt('Category name', cat);
+  if (newName === null) return;
+  const newAmtStr = prompt('Amount for ' + newName.trim(), currentTotal);
+  if (newAmtStr === null) return;
+  const newAmt = parseFloat(newAmtStr);
+  if (!newAmt || newAmt <= 0) { alert('Invalid amount'); return; }
+
+  const updates = {};
+  matching.forEach(e => { updates[e.id] = null; });
+  const newKey = expensesRef.push().key;
+  updates[newKey] = { amount: newAmt, date: dayKey, category: newName.trim() || cat, note: '', ts: Date.now() };
+  expensesRef.update(updates);
+}
+
+function deleteCategory(dayKey, cat) {
+  if (!confirm(`Delete "${cat}" on ${formatDateDisplay(dayKey)}?`)) return;
+  const matching = allExpenses.filter(e => e.date === dayKey && (e.category || 'Other') === cat);
+  const updates = {};
+  matching.forEach(e => { updates[e.id] = null; });
+  expensesRef.update(updates);
+}
+
+// ---------- ADD EXPENSE: staging + batch commit ----------
+document.getElementById('inpDate').value = todayISO();
+let stagedExpenses = [];
+
+function renderStaging() {
+  const grid = document.getElementById('stageGrid');
+  const countEl = document.getElementById('stageCount');
+  countEl.textContent = stagedExpenses.length + ' staged';
+  document.getElementById('btnCommit').disabled = stagedExpenses.length === 0;
+  grid.innerHTML = '';
+  stagedExpenses.forEach((e, idx) => {
+    const item = document.createElement('div');
+    item.className = 'stage-item';
+    item.innerHTML = `
+      <button class="stage-del" data-idx="${idx}">✕</button>
+      <div class="stage-amt">${formatRupee(e.amount)}</div>
+      <div class="stage-cat">${escapeHtml(e.category)}</div>
+    `;
+    grid.appendChild(item);
+  });
+  grid.querySelectorAll('.stage-del').forEach(btn => {
+    btn.addEventListener('click', () => {
+      stagedExpenses.splice(parseInt(btn.dataset.idx), 1);
+      renderStaging();
+    });
+  });
+}
+
+document.getElementById('btnStage').addEventListener('click', () => {
+  const amount = parseFloat(document.getElementById('inpAmount').value);
+  const date = document.getElementById('inpDate').value || todayISO();
+  const category = document.getElementById('inpCategory').value.trim();
+  const note = document.getElementById('inpNote').value.trim();
+  if (!amount || amount <= 0) { alert('Enter a valid amount'); return; }
+  if (!category) { alert('Enter a category'); return; }
+  stagedExpenses.push({ amount, date, category, note });
+  document.getElementById('inpAmount').value = '';
+  document.getElementById('inpCategory').value = '';
+  document.getElementById('inpNote').value = '';
+  renderStaging();
+});
+
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2200);
+}
+
+document.getElementById('btnCommit').addEventListener('click', () => {
+  if (stagedExpenses.length === 0) return;
+  const updates = {};
+  stagedExpenses.forEach(e => {
+    const key = expensesRef.push().key;
+    updates[key] = { amount: e.amount, date: e.date, category: e.category, note: e.note, ts: Date.now() };
+  });
+  const count = stagedExpenses.length;
+  expensesRef.update(updates).then(() => {
+    showToast(`Added successfully — ${count} expense${count > 1 ? 's' : ''}`);
+    stagedExpenses = [];
+    renderStaging();
+    homePageIndex = 0;
+    document.querySelector('.side-link[data-page="home"]').click();
+  });
+});
+
+// ---------- ALARMS ----------
+const dayLabels = ['S','M','T','W','T','F','S'];
+let selectedDays = new Set([0,1,2,3,4,5,6]);
+const dayChipsEl = document.getElementById('dayChips');
+dayLabels.forEach((label, idx) => {
+  const chip = document.createElement('div');
+  chip.className = 'day-chip on';
+  chip.textContent = label;
+  chip.dataset.day = idx;
+  chip.addEventListener('click', () => {
+    if (selectedDays.has(idx)) { selectedDays.delete(idx); chip.classList.remove('on'); }
+    else { selectedDays.add(idx); chip.classList.add('on'); }
+  });
+  dayChipsEl.appendChild(chip);
+});
+
+document.getElementById('btnAddReminder').addEventListener('click', () => {
+  const label = document.getElementById('inpRemLabel').value.trim();
+  const hour = parseInt(document.getElementById('inpHour').value);
+  const minute = parseInt(document.getElementById('inpMinute').value);
+  if (!label) { alert('Enter an alarm name'); return; }
+  if (isNaN(hour) || hour < 0 || hour > 23) { alert('Enter valid hour (0-23)'); return; }
+  if (isNaN(minute) || minute < 0 || minute > 59) { alert('Enter valid minute (0-59)'); return; }
+  if (selectedDays.size === 0) { alert('Select at least one day'); return; }
+  remindersRef.push({ label, hour, minute, days: Array.from(selectedDays) });
+  document.getElementById('inpRemLabel').value = '';
+  document.getElementById('inpHour').value = '';
+  document.getElementById('inpMinute').value = '';
+});
+
+function pad2(n) { return n.toString().padStart(2, '0'); }
+
+remindersRef.on('value', snap => {
+  const data = snap.val() || {};
+  const entries = Object.entries(data).map(([id, v]) => ({ id, ...v }));
+  entries.sort((a, b) => (a.hour * 60 + a.minute) - (b.hour * 60 + b.minute));
+
+  const listEl = document.getElementById('reminderList');
+  if (entries.length === 0) { listEl.innerHTML = '<div class="empty">No alarms set</div>'; window._reminders = []; return; }
+  listEl.innerHTML = '';
+  entries.forEach(r => {
+    const daysText = (r.days && r.days.length === 7) ? 'Every day' : (r.days || []).map(d => dayLabels[d]).join(' ');
+    const item = document.createElement('div');
+    item.className = 'reminder-item';
+    item.innerHTML = `
+      <div class="rem-left">
+        <div style="font-weight:600;font-size:14px;">${escapeHtml(r.label)}</div>
+        <div class="rem-days">${daysText}</div>
+      </div>
+      <div class="exp-right">
+        <div class="rem-time">${pad2(r.hour)}:${pad2(r.minute)}</div>
+        <button class="del-btn" data-id="${r.id}">✕</button>
+      </div>`;
+    listEl.appendChild(item);
+  });
+  listEl.querySelectorAll('.del-btn').forEach(btn => {
+    btn.addEventListener('click', () => remindersRef.child(btn.dataset.id).remove());
+  });
+  window._reminders = entries;
+});
+
+// ---------- Notification permission ----------
+const notifBanner = document.getElementById('notifBanner');
+function refreshNotifBanner() {
+  notifBanner.style.display = ('Notification' in window && Notification.permission !== 'granted') ? 'flex' : 'none';
+}
+refreshNotifBanner();
+document.getElementById('btnEnableNotif').addEventListener('click', () => {
+  Notification.requestPermission().then(refreshNotifBanner);
+});
+
+// ---------- Alarm checker loop (foreground/background tab only) ----------
+const firedToday = {};
+setInterval(() => {
+  if (!('Notification' in window) || Notification.permission !== 'granted') return;
+  const now = new Date();
+  const day = now.getDay(), hh = now.getHours(), mm = now.getMinutes();
+  const todayStr = now.toDateString();
+  (window._reminders || []).forEach(r => {
+    if (r.days && r.days.includes(day) && r.hour === hh && r.minute === mm) {
+      const fireKey = r.id + '-' + todayStr + '-' + hh + ':' + mm;
+      if (!firedToday[fireKey]) {
+        firedToday[fireKey] = true;
+        new Notification(r.label, { body: 'Alarm time', tag: fireKey });
+      }
+    }
+  });
+}, 15000);
+</script>
+</body>
+</html>
